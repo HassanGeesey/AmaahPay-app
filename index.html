@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AmaahPay - Shop & Pay</title>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('shopkeep-theme') || 'light';
+      var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var effectiveTheme = theme === 'dark' || (theme === 'system' && systemDark);
+      console.log('Initial theme from localStorage:', theme, 'Effective:', effectiveTheme);
+      
+      // Force remove dark class first
+      document.documentElement.classList.remove('dark');
+      if (effectiveTheme) {
+        document.documentElement.classList.add('dark');
+      }
+      
+      console.log('Initial HTML classes:', document.documentElement.className);
+    })();
+  </script>
+</head>
+<body class="bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-50">
+  <div id="root"></div>
+  <script type="module" src="./index.tsx"></script>
+</body>
+</html>
