@@ -1,173 +1,305 @@
--- Supabase Database Schema for ShopKeep/Rukun POS System
--- Run this in your Supabase project SQL Editor
+-- ============================================
+-- AmaahPay Database Schema for Supabase
+-- ============================================
+-- 
+-- INSTRUCTIONS:
+-- 1. Go to your Supabase project dashboard
+-- 2. Navigate to SQL Editor
+-- 3. Click "New query" and paste this entire script
+-- 4. Click "Run" to execute
+--
+-- This script creates all required tables and sets up Row Level Security
+-- ============================================
 
--- Enable UUID extension
+-- ============================================
+-- ENABLE UUID EXTENSION
+-- ============================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Profiles table (extends auth.users with shop information)
-CREATE TABLE IF NOT EXISTS profiles (
-  id UUID REFERENCES auth.users(id) PRIMARY KEY,
-  shop_name TEXT NOT NULL,
-  shop_email TEXT,
-  phone TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- ============================================
+-- TABLES
+-- ============================================
+
+-- Profiles table (extends auth.users)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  email TEXT UNIQUE,
+  role TEXT DEFAULT 'shop_owner',
+  shop_name TEXT,
+  subscription_status TEXT DEFAULT 'active',
+  subscription_end TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Customers table (per-shop)
-CREATE TABLE IF NOT EXISTS customers (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+-- Customers table
+CREATE TABLE IF NOT EXISTS public.customers (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   phone TEXT,
-  deposit DECIMAL(10,2) DEFAULT 0.00,
-  credit DECIMAL(10,2) DEFAULT 0.00,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  deposit DOUBLE PRECISION DEFAULT 0,
+  credit DOUBLE PRECISION DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Products table (per-shop)
-CREATE TABLE IF NOT EXISTS products (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+-- Products table
+CREATE TABLE IF NOT EXISTS public.products (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
-  unit_price DECIMAL(10,2) NOT NULL,
+  unit_price DOUBLE PRECISION NOT NULL,
   total_sold INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Transactions table (per-shop)
-CREATE TABLE IF NOT EXISTS transactions (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  type TEXT CHECK (type IN ('purchase', 'payment')) NOT NULL,
-  customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
+-- Transactions table
+CREATE TABLE IF NOT EXISTS public.transactions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  customer_id UUID REFERENCES public.customers(id) ON DELETE SET NULL,
   customer_name TEXT NOT NULL,
-  amount DECIMAL(10,2) NOT NULL,
-  items JSONB, -- TransactionItem[] for purchases only
-  previous_balance JSONB NOT NULL CHECK (jsonb_typeof(previous_balance) = 'object'),
-  new_balance JSONB NOT NULL CHECK (jsonb_typeof(new_balance) = 'object'),
+  type TEXT NOT NULL CHECK (type IN ('purchase', 'payment')),
+  amount DOUBLE PRECISION NOT NULL,
+  items JSONB,
   notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  new_balance JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Cash transactions table (for cash in/out tracking)
-CREATE TABLE IF NOT EXISTS cash_transactions (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  type TEXT CHECK (type IN ('cash_in', 'cash_out', 'cash_purchase')) NOT NULL,
-  amount DECIMAL(10,2) NOT NULL,
+-- Cash transactions table
+CREATE TABLE IF NOT EXISTS public.cash_transactions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  customer_id UUID REFERENCES public.customers(id) ON DELETE SET NULL,
+  customer_name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('cash_in', 'cash_out')),
+  amount DOUBLE PRECISION NOT NULL,
   notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_customers_profile_id ON customers(profile_id);
-CREATE INDEX IF NOT EXISTS idx_products_profile_id ON products(profile_id);
-CREATE INDEX IF NOT EXISTS idx_transactions_profile_id ON transactions(profile_id);
-CREATE INDEX IF NOT EXISTS idx_transactions_customer_id ON transactions(customer_id);
-CREATE INDEX IF NOT EXISTS idx_cash_transactions_profile_id ON cash_transactions(profile_id);
-CREATE INDEX IF NOT EXISTS idx_cash_transactions_type ON cash_transactions(type);
+-- Subscriptions table (for payment tracking)
+CREATE TABLE IF NOT EXISTS public.subscriptions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  plan TEXT NOT NULL,
+  amount DOUBLE PRECISION NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'overdue', 'cancelled')),
+  payment_date TIMESTAMP WITH TIME ZONE,
+  expiry_date TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
--- Enable Row Level Security
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cash_transactions ENABLE ROW LEVEL SECURITY;
+-- Settings table
+CREATE TABLE IF NOT EXISTS public.settings (
+  key TEXT PRIMARY KEY,
+  value JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
--- RLS Policies: Users can only access their own data
--- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
-DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
-DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
-DROP POLICY IF EXISTS "Users can delete own profile" ON profiles;
-
--- Create policies with IF NOT EXISTS clause
-CREATE POLICY IF NOT EXISTS "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY IF NOT EXISTS "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY IF NOT EXISTS "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY IF NOT EXISTS "Users can delete own profile" ON profiles FOR DELETE USING (auth.uid() = id);
-
--- Drop existing customer policies if they exist
-DROP POLICY IF EXISTS "Users can view own customers" ON customers;
-DROP POLICY IF EXISTS "Users can insert own customers" ON customers;
-DROP POLICY IF EXISTS "Users can update own customers" ON customers;
-DROP POLICY IF EXISTS "Users can delete own customers" ON customers;
-
--- Create policies with IF NOT EXISTS clause
-CREATE POLICY IF NOT EXISTS "Users can view own customers" ON customers FOR SELECT USING (auth.uid() = profile_id);
-CREATE POLICY IF NOT EXISTS "Users can insert own customers" ON customers FOR INSERT WITH CHECK (auth.uid() = profile_id);
-CREATE POLICY IF NOT EXISTS "Users can update own customers" ON customers FOR UPDATE USING (auth.uid() = profile_id);
-CREATE POLICY IF NOT EXISTS "Users can delete own customers" ON customers FOR DELETE USING (auth.uid() = profile_id);
-
--- Drop existing product policies if they exist
-DROP POLICY IF EXISTS "Users can view own products" ON products;
-DROP POLICY IF EXISTS "Users can insert own products" ON products;
-DROP POLICY IF EXISTS "Users can update own products" ON products;
-DROP POLICY IF EXISTS "Users can delete own products" ON products;
-
--- Create policies with IF NOT EXISTS clause
-CREATE POLICY IF NOT EXISTS "Users can view own products" ON products FOR SELECT USING (auth.uid() = profile_id);
-CREATE POLICY IF NOT EXISTS "Users can insert own products" ON products FOR INSERT WITH CHECK (auth.uid() = profile_id);
-CREATE POLICY IF NOT EXISTS "Users can update own products" ON products FOR UPDATE USING (auth.uid() = profile_id);
-CREATE POLICY IF NOT EXISTS "Users can delete own products" ON products FOR DELETE USING (auth.uid() = profile_id);
-
--- Drop existing transaction policies if they exist
-DROP POLICY IF EXISTS "Users can view own transactions" ON transactions;
-DROP POLICY IF EXISTS "Users can insert own transactions" ON transactions;
-DROP POLICY IF EXISTS "Users can update own transactions" ON transactions;
-DROP POLICY IF EXISTS "Users can delete own transactions" ON transactions;
-
--- Create policies with IF NOT EXISTS clause
-CREATE POLICY IF NOT EXISTS "Users can view own transactions" ON transactions FOR SELECT USING (auth.uid() = profile_id);
-CREATE POLICY IF NOT EXISTS "Users can insert own transactions" ON transactions FOR INSERT WITH CHECK (auth.uid() = profile_id);
-CREATE POLICY IF NOT EXISTS "Users can update own transactions" ON transactions FOR UPDATE USING (auth.uid() = profile_id);
-CREATE POLICY IF NOT EXISTS "Users can delete own transactions" ON transactions FOR DELETE USING (auth.uid() = profile_id);
-
-CREATE POLICY "Users can view own cash transactions" ON cash_transactions FOR SELECT USING (auth.uid() = profile_id);
-CREATE POLICY "Users can insert own cash transactions" ON cash_transactions FOR INSERT WITH CHECK (auth.uid() = profile_id);
-CREATE POLICY "Users can update own cash transactions" ON cash_transactions FOR UPDATE USING (auth.uid() = profile_id);
-CREATE POLICY "Users can delete own cash transactions" ON cash_transactions FOR DELETE USING (auth.uid() = profile_id);
-
--- Function to automatically create profile on user signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
+-- ============================================
+-- AUTOMATIC UPDATE TIMESTAMPS FUNCTION
+-- ============================================
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, shop_name)
-  VALUES (new.id, new.raw_user_meta_data->>'shop_name');
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger to create profile on signup
-CREATE OR REPLACE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
+  NEW.updated_at = timezone('utc'::text, now());
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Triggers for updated_at
-CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Attach triggers to tables with updated_at
+DROP TRIGGER IF EXISTS handle_updated_at_on_profiles ON public.profiles;
+CREATE TRIGGER handle_updated_at_on_profiles
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
-CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON customers
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS handle_updated_at_on_customers ON public.customers;
+CREATE TRIGGER handle_updated_at_on_customers
+  BEFORE UPDATE ON public.customers
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
-CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS handle_updated_at_on_products ON public.products;
+CREATE TRIGGER handle_updated_at_on_products
+  BEFORE UPDATE ON public.products
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
--- Create unique constraints for business logic
-ALTER TABLE customers ADD CONSTRAINT unique_customer_name_per_shop 
-  UNIQUE (profile_id, name);
-  
-ALTER TABLE products ADD CONSTRAINT unique_product_name_per_shop 
-  UNIQUE (profile_id, name);
+DROP TRIGGER IF EXISTS handle_updated_at_on_transactions ON public.transactions;
+CREATE TRIGGER handle_updated_at_on_transactions
+  BEFORE UPDATE ON public.transactions
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS handle_updated_at_on_subscriptions ON public.subscriptions;
+CREATE TRIGGER handle_updated_at_on_subscriptions
+  BEFORE UPDATE ON public.subscriptions
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS handle_updated_at_on_settings ON public.settings;
+CREATE TRIGGER handle_updated_at_on_settings
+  BEFORE UPDATE ON public.settings
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- ============================================
+-- ENABLE ROW LEVEL SECURITY
+-- ============================================
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cash_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+
+-- ============================================
+-- ROW LEVEL SECURITY POLICIES
+-- ============================================
+
+-- Profiles policies
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+
+CREATE POLICY "Users can view their own profile" ON public.profiles
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert their own profile" ON public.profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Customers policies (all authenticated users can access)
+DROP POLICY IF EXISTS "Authenticated users can view customers" ON public.customers;
+DROP POLICY IF EXISTS "Authenticated users can insert customers" ON public.customers;
+DROP POLICY IF EXISTS "Authenticated users can update customers" ON public.customers;
+DROP POLICY IF EXISTS "Authenticated users can delete customers" ON public.customers;
+
+CREATE POLICY "Authenticated users can view customers" ON public.customers
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can insert customers" ON public.customers
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can update customers" ON public.customers
+  FOR UPDATE USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can delete customers" ON public.customers
+  FOR DELETE USING (auth.role() = 'authenticated');
+
+-- Products policies
+DROP POLICY IF EXISTS "Authenticated users can view products" ON public.products;
+DROP POLICY IF EXISTS "Authenticated users can insert products" ON public.products;
+DROP POLICY IF EXISTS "Authenticated users can update products" ON public.products;
+DROP POLICY IF EXISTS "Authenticated users can delete products" ON public.products;
+
+CREATE POLICY "Authenticated users can view products" ON public.products
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can insert products" ON public.products
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can update products" ON public.products
+  FOR UPDATE USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can delete products" ON public.products
+  FOR DELETE USING (auth.role() = 'authenticated');
+
+-- Transactions policies
+DROP POLICY IF EXISTS "Authenticated users can view transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Authenticated users can insert transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Authenticated users can update transactions" ON public.transactions;
+
+CREATE POLICY "Authenticated users can view transactions" ON public.transactions
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can insert transactions" ON public.transactions
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can update transactions" ON public.transactions
+  FOR UPDATE USING (auth.role() = 'authenticated');
+
+-- Cash transactions policies
+DROP POLICY IF EXISTS "Authenticated users can view cash transactions" ON public.cash_transactions;
+DROP POLICY IF EXISTS "Authenticated users can insert cash transactions" ON public.cash_transactions;
+
+CREATE POLICY "Authenticated users can view cash transactions" ON public.cash_transactions
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can insert cash transactions" ON public.cash_transactions
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- Subscriptions policies
+DROP POLICY IF EXISTS "Users can view own subscription" ON public.subscriptions;
+DROP POLICY IF EXISTS "Admins can manage subscriptions" ON public.subscriptions;
+
+CREATE POLICY "Users can view own subscription" ON public.subscriptions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage subscriptions" ON public.subscriptions
+  FOR ALL USING (auth.role() = 'authenticated');
+
+-- Settings policies
+DROP POLICY IF EXISTS "Authenticated users can view settings" ON public.settings;
+CREATE POLICY "Authenticated users can view settings" ON public.settings
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- ============================================
+-- INDEXES FOR PERFORMANCE
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_customers_phone ON public.customers(phone);
+CREATE INDEX IF NOT EXISTS idx_transactions_customer_id ON public.transactions(customer_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON public.transactions(created_at);
+CREATE INDEX IF NOT EXISTS idx_cash_transactions_customer_id ON public.cash_transactions(customer_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON public.subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON public.subscriptions(status);
+
+-- ============================================
+-- VIEWS FOR EASY QUERIES
+-- ============================================
+
+-- Customer balance summary view
+CREATE OR REPLACE VIEW public.customer_summary AS
+SELECT
+  c.id,
+  c.name,
+  c.phone,
+  c.deposit,
+  c.credit,
+  (c.deposit - c.credit) AS net_balance,
+  c.created_at,
+  c.updated_at,
+  (SELECT COUNT(*) FROM public.transactions t WHERE t.customer_id = c.id) AS transaction_count
+FROM public.customers c;
+
+-- Transactions history view
+CREATE OR REPLACE VIEW public.transaction_history AS
+SELECT
+  t.id,
+  t.customer_id,
+  t.customer_name,
+  t.type,
+  t.amount,
+  t.items,
+  t.notes,
+  t.new_balance,
+  t.created_at
+FROM public.transactions t
+ORDER BY t.created_at DESC;
+
+-- ============================================
+-- INSERT DEFAULT SETTINGS
+-- ============================================
+INSERT INTO public.settings (key, value) VALUES
+  ('currency_symbol', '"$"'),
+  ('currency_position', '"before"'),
+  ('language', '"en"')
+ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- SETUP COMPLETE
+-- ============================================
+SELECT '✅ AmaahPay database schema created successfully!' as message;
