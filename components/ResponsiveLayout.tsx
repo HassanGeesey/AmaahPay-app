@@ -9,10 +9,10 @@ interface ResponsiveLayoutProps {
 
 export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+    <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
       {/* Mobile Layout */}
       <div className="lg:hidden">
-        <div className="pb-20 min-h-screen">
+        <div className="pb-24 min-h-screen">
           <Header />
           {children}
           <BottomNav />

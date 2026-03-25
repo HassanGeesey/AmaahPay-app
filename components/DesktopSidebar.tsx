@@ -33,27 +33,30 @@ const navItems = [
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
   )},
-
 ];
 
 export default function DesktopSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-const { shopName, isOnline } = useShop();
+  const { shopName, isOnline } = useShop();
 
   return (
-    <div className="hidden lg:flex flex-col w-64 h-screen bg-white border-r border-stone-200 fixed left-0 top-0">
+    <div className="hidden lg:flex flex-col w-64 h-screen border-r fixed left-0 top-0" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
       {/* Logo */}
-      <div className="p-6 border-b border-stone-200">
+      <div className="p-6 border-b" style={{ borderColor: 'var(--color-border)' }}>
         <div className="flex items-center gap-3">
-          <img 
-            src="./app_icon.png" 
-            alt="App Icon" 
-            className="w-10 h-10 rounded-lg object-cover"
-          />
+          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+          </div>
           <div>
-            <h1 className="font-semibold text-stone-900">{shopName || 'AmaahPay'}</h1>
-            <p className="text-xs text-stone-500">{isOnline ? 'Online' : 'Offline'}</p>
+            <h1 className="font-semibold" style={{ color: 'var(--color-text)' }}>
+              {shopName || 'AmaahPay'}
+            </h1>
+            <p className="text-xs" style={{ color: isOnline ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+              {isOnline ? '● Online' : '○ Offline'}
+            </p>
           </div>
         </div>
       </div>
@@ -66,11 +69,12 @@ const { shopName, isOnline } = useShop();
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 isActive 
-                  ? 'bg-stone-900 text-white' 
-                  : 'text-stone-600 hover:bg-stone-100'
+                  ? 'gradient-primary text-white shadow-md' 
+                  : 'hover:bg-primary/5'
               }`}
+              style={isActive ? {} : { color: 'var(--color-text)' }}
             >
               {item.icon}
               {item.label}
@@ -79,16 +83,29 @@ const { shopName, isOnline } = useShop();
         })}
       </nav>
 
-{/* Bottom Actions */}
-      <div className="p-4 border-t border-stone-200 space-y-2">
+      {/* Bottom Actions */}
+      <div className="p-4 border-t space-y-2" style={{ borderColor: 'var(--color-border)' }}>
         <button
-          onClick={() => navigate('/currency')}
-          className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-100"
+          onClick={() => navigate('/settings')}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:bg-primary/5"
+          style={{ color: 'var(--color-text-secondary)' }}
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          Currency
+          Settings
+        </button>
+        
+        <button
+          onClick={() => navigate('/admin-signup')}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:bg-primary/5"
+          style={{ color: 'var(--color-error)' }}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          Admin Panel
         </button>
       </div>
     </div>

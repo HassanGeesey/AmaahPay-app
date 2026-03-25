@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useShop } from '../contexts/ShopContext'
-// import { jsPDF } from 'jspdf'
 
 type DateRange = 'today' | 'week' | 'month' | 'all'
 
@@ -84,15 +83,15 @@ export default function ReportScreen() {
   const reportData: ReportData = useMemo(() => {
     const cashIn = filteredCashTransactions
       .filter(t => t.type === 'cash_in')
-      .reduce((sum, t) => sum + t.amount, 0)
+      .reduce((sum: number, t: any) => sum + t.amount, 0)
     
     const cashOut = filteredCashTransactions
       .filter(t => t.type === 'cash_out')
-      .reduce((sum, t) => sum + t.amount, 0)
+      .reduce((sum: number, t: any) => sum + t.amount, 0)
     
     const purchases = filteredTransactions
       .filter(t => t.type === 'purchase')
-      .reduce((sum, t) => sum + t.amount, 0)
+      .reduce((sum: number, t: any) => sum + t.amount, 0)
 
     return {
       totalCashIn: cashIn,
@@ -104,13 +103,13 @@ export default function ReportScreen() {
   }, [filteredTransactions, filteredCashTransactions])
 
   const productsByCustomer = useMemo(() => {
-    const result: Record<string, { customer: typeof customers[0]; products: ProductSale[]; total: number }> = {}
+    const result: Record<string, { customer: any; products: ProductSale[]; total: number }> = {}
 
     const relevantTransactions = selectedCustomerId === 'all'
-      ? transactions.filter(t => t.type === 'purchase')
-      : transactions.filter(t => t.customerId === selectedCustomerId && t.type === 'purchase')
+      ? transactions.filter((t: any) => t.type === 'purchase')
+      : transactions.filter((t: any) => t.customerId === selectedCustomerId && t.type === 'purchase')
 
-    relevantTransactions.forEach(tx => {
+    relevantTransactions.forEach((tx: any) => {
       if (!tx.items || tx.items.length === 0) return
 
       if (dateRange !== 'all') {
@@ -131,15 +130,15 @@ export default function ReportScreen() {
         if (txDate < cutoff) return
       }
 
-      const customer = customers.find(c => c.id === tx.customerId)
+      const customer = customers.find((c: any) => c.id === tx.customerId)
       if (!customer) return
 
       if (!result[tx.customerId]) {
         result[tx.customerId] = { customer, products: [], total: 0 }
       }
 
-      tx.items.forEach(item => {
-        const existing = result[tx.customerId].products.find(p => p.productName === item.productName)
+      tx.items.forEach((item: any) => {
+        const existing = result[tx.customerId].products.find((p: any) => p.productName === item.productName)
         if (existing) {
           existing.quantity += item.quantity
           existing.total += item.total
@@ -172,336 +171,34 @@ export default function ReportScreen() {
 
   const generatePDF = async () => {
     setGenerating(true)
-    try {
-      // PDF generation temporarily disabled
-      alert('PDF export temporarily disabled for deployment')
-      return
-      // const doc = new jsPDF()
-      const customerName = selectedCustomerId === 'all' ? 'All Customers' : customers.find(c => c.id === selectedCustomerId)?.name || 'Unknown'
-      const pageWidth = doc.internal.pageSize.width
-      const margin = 20
-      const tableWidth = pageWidth - (margin * 2)
-      
-      try {
-        const iconUrl = '/android_asset/webapp/app_icon.png'
-        const response = await fetch(iconUrl)
-        const blob = await response.blob()
-        const reader = new FileReader()
-        
-        reader.onload = function(e) {
-          const imgData = e.target?.result as string
-          if (imgData) {
-            doc.addImage(imgData, 'PNG', margin, 8, 18, 18)
-          }
-          doc.setFontSize(24)
-          doc.setFont('helvetica', 'bold')
-          doc.text(shopName || 'AmaahPay', margin + 22, 22)
-          
-          doc.setFontSize(10)
-          doc.setFont('helvetica', 'normal')
-          doc.text(`Report`, margin + 22, 30)
-          
-          doc.setFontSize(9)
-          doc.text(`Customer: ${customerName}`, margin, 42)
-          doc.text(`Date Range: ${dateRange.charAt(0).toUpperCase() + dateRange.slice(1)}`, margin, 48)
-          doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 54)
-          
-          doc.setFontSize(11)
-          doc.setFont('helvetica', 'bold')
-          doc.text('Summary', margin, 66)
-          
-          finishPDF(doc, customerName, pageWidth, margin, tableWidth)
-        }
-        reader.readAsDataURL(blob)
-      } catch (iconError) {
-        doc.setFontSize(24)
-        doc.setFont('helvetica', 'bold')
-        doc.text(shopName || 'AmaahPay', margin, 22)
-        
-        doc.setFontSize(10)
-        doc.setFont('helvetica', 'normal')
-        doc.text(`Report`, margin, 30)
-        
-        doc.setFontSize(9)
-        doc.text(`Customer: ${customerName}`, margin, 42)
-        doc.text(`Date Range: ${dateRange.charAt(0).toUpperCase() + dateRange.slice(1)}`, margin, 48)
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 54)
-        
-        doc.setFontSize(11)
-        doc.setFont('helvetica', 'bold')
-        doc.text('Summary', margin, 66)
-        
-        finishPDF(doc, customerName, pageWidth, margin, tableWidth)
-      }
-    } finally {
+    setTimeout(() => {
       setGenerating(false)
-    }
-  }
-
-  const finishPDF = (doc: any, customerName: string, pageWidth: number, margin: number, tableWidth: number) => {
-    let yPos = 72
-    
-    const summaryData = [
-      ['Cash In', formatCurrency(reportData.totalCashIn)],
-      ['Cash Out', formatCurrency(reportData.totalCashOut)],
-      ['Purchases', formatCurrency(reportData.totalPurchases)],
-      ['Products Sold', formatCurrency(totalProductsSold)],
-      ['Net Balance', formatCurrency(reportData.netChange)]
-    ]
-    
-    summaryData.forEach((row, index) => {
-      const isLast = index === summaryData.length - 1
-      
-      doc.setFillColor(250, 250, 250)
-      doc.rect(margin, yPos, tableWidth, 8, 'F')
-      
-      doc.setDrawColor(200, 200, 200)
-      doc.setLineWidth(0.3)
-      doc.line(margin, yPos, margin + tableWidth, yPos)
-      if (isLast) {
-        doc.line(margin, yPos + 8, margin + tableWidth, yPos + 8)
-      }
-      
-      doc.setFontSize(9)
-      doc.setFont('helvetica', 'normal')
-      doc.text(row[0], margin + 4, yPos + 5.5)
-      
-      const valueWidth = doc.getTextWidth(row[1])
-      doc.setFont('helvetica', 'bold')
-      doc.text(row[1], margin + tableWidth - valueWidth - 4, yPos + 5.5)
-      
-      yPos += 8
-    })
-    
-    yPos += 10
-
-    if (productsByCustomer.length > 0) {
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Products by Customer', margin, yPos)
-      yPos += 6
-      
-      productsByCustomer.forEach((customerData) => {
-        if (yPos > 250) {
-          doc.addPage()
-          yPos = 20
-        }
-
-        doc.setFillColor(240, 240, 240)
-        doc.rect(margin, yPos, tableWidth, 8, 'F')
-        doc.setDrawColor(200, 200, 200)
-        doc.setLineWidth(0.3)
-        doc.line(margin, yPos, margin + tableWidth, yPos)
-        doc.line(margin, yPos + 8, margin + tableWidth, yPos + 8)
-        
-        doc.setFontSize(9)
-        doc.setFont('helvetica', 'bold')
-        doc.text(customerData.customer.name, margin + 4, yPos + 5.5)
-        
-        const customerTotal = formatCurrency(customerData.total)
-        const customerTotalWidth = doc.getTextWidth(customerTotal)
-        doc.text(customerTotal, margin + tableWidth - customerTotalWidth - 4, yPos + 5.5)
-        
-        yPos += 8
-        
-        doc.setFontSize(8)
-        doc.setFont('helvetica', 'normal')
-        
-        customerData.products.forEach((product) => {
-          if (yPos > 280) {
-            doc.addPage()
-            yPos = 20
-          }
-          
-          doc.text(`  ${product.productName}`, margin + 4, yPos + 5)
-          
-          const productInfo = `${product.quantity}x - ${formatCurrency(product.total)}`
-          const productInfoWidth = doc.getTextWidth(productInfo)
-          doc.text(productInfo, margin + tableWidth - productInfoWidth - 4, yPos + 5)
-          
-          doc.setDrawColor(230, 230, 230)
-          doc.setLineWidth(0.2)
-          doc.line(margin, yPos + 7, margin + tableWidth, yPos + 7)
-          
-          yPos += 7
-        })
-        
-        yPos += 4
-      })
-      
-      yPos += 6
-    }
-    
-    if (filteredCashTransactions.length > 0) {
-      if (yPos > 220) {
-        doc.addPage()
-        yPos = 20
-      }
-      
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Cash Transactions', margin, yPos)
-      yPos += 6
-      
-      doc.setFillColor(240, 240, 240)
-      doc.rect(margin, yPos, tableWidth, 8, 'F')
-      doc.setDrawColor(200, 200, 200)
-      doc.line(margin, yPos, margin + tableWidth, yPos)
-      doc.line(margin, yPos + 8, margin + tableWidth, yPos + 8)
-      
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Date', margin + 4, yPos + 5)
-      doc.text('Customer', margin + 50, yPos + 5)
-      doc.text('Type', margin + 110, yPos + 5)
-      doc.text('Amount', margin + tableWidth - 35, yPos + 5)
-      
-      yPos += 8
-      
-      filteredCashTransactions.slice(0, 20).forEach((tx, index) => {
-        if (yPos > 270) {
-          doc.addPage()
-          yPos = 20
-        }
-        
-        if (index % 2 === 0) {
-          doc.setFillColor(250, 250, 250)
-          doc.rect(margin, yPos, tableWidth, 7, 'F')
-        }
-        
-        doc.setFontSize(8)
-        doc.setFont('helvetica', 'normal')
-        
-        const date = new Date(tx.timestamp).toLocaleDateString()
-        const type = tx.type === 'cash_in' ? 'Cash In' : 'Cash Out'
-        const amount = (tx.type === 'cash_in' ? '+' : '-') + formatCurrency(tx.amount)
-        
-        doc.text(date, margin + 4, yPos + 5)
-        doc.text(tx.customerName?.substring(0, 25) || '', margin + 50, yPos + 5)
-        doc.text(type, margin + 110, yPos + 5)
-        
-        const amountWidth = doc.getTextWidth(amount)
-        doc.text(amount, margin + tableWidth - amountWidth - 4, yPos + 5)
-        
-        doc.setDrawColor(230, 230, 230)
-        doc.setLineWidth(0.2)
-        doc.line(margin, yPos + 7, margin + tableWidth, yPos + 7)
-        
-        yPos += 7
-      })
-      
-      yPos += 8
-    }
-    
-    if (filteredTransactions.length > 0) {
-      if (yPos > 220) {
-        doc.addPage()
-        yPos = 20
-      }
-      
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Sales & Payments', margin, yPos)
-      yPos += 6
-      
-      doc.setFillColor(240, 240, 240)
-      doc.rect(margin, yPos, tableWidth, 8, 'F')
-      doc.setDrawColor(200, 200, 200)
-      doc.line(margin, yPos, margin + tableWidth, yPos)
-      doc.line(margin, yPos + 8, margin + tableWidth, yPos + 8)
-      
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Date', margin + 4, yPos + 5)
-      doc.text('Customer', margin + 50, yPos + 5)
-      doc.text('Type', margin + 110, yPos + 5)
-      doc.text('Amount', margin + tableWidth - 35, yPos + 5)
-      
-      yPos += 8
-      
-      filteredTransactions.slice(0, 20).forEach((tx, index) => {
-        if (yPos > 270) {
-          doc.addPage()
-          yPos = 20
-        }
-        
-        if (index % 2 === 0) {
-          doc.setFillColor(250, 250, 250)
-          doc.rect(margin, yPos, tableWidth, 7, 'F')
-        }
-        
-        doc.setFontSize(8)
-        doc.setFont('helvetica', 'normal')
-        
-        const date = new Date(tx.timestamp).toLocaleDateString()
-        const type = tx.type === 'purchase' ? 'Purchase' : 'Payment'
-        const amount = (tx.type === 'purchase' ? '-' : '+') + formatCurrency(tx.amount)
-        
-        doc.text(date, margin + 4, yPos + 5)
-        doc.text(tx.customerName?.substring(0, 25) || '', margin + 50, yPos + 5)
-        doc.text(type, margin + 110, yPos + 5)
-        
-        const amountWidth = doc.getTextWidth(amount)
-        doc.text(amount, margin + tableWidth - amountWidth - 4, yPos + 5)
-        
-        doc.setDrawColor(230, 230, 230)
-        doc.setLineWidth(0.2)
-        doc.line(margin, yPos + 7, margin + tableWidth, yPos + 7)
-        
-        yPos += 7
-      })
-    }
-    
-    const totalPages = doc.getNumberOfPages()
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(150, 150, 150)
-      doc.text(`Page ${i} of ${totalPages}`, margin, doc.internal.pageSize.height - 10)
-    }
-    
-    const pdfData = doc.output('datauristring')
-    const fileName = `report-${customerName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`
-    
-    if (window.Android && window.Android && window.Android.downloadPDF) {
-      try {
-        window.Android.downloadPDF(pdfData, fileName)
-      } catch (error) {
-        console.error('Android download failed:', error)
-        const link = document.createElement('a')
-        link.href = pdfData
-        link.download = fileName
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
-    } else {
-      const link = document.createElement('a')
-      link.href = pdfData
-      link.download = fileName
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
+      alert('PDF export temporarily disabled for deployment')
+    }, 1000)
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-      <div className="p-6 max-w-lg mx-auto lg:max-w-none">
+    <div className="min-h-screen">
+      <div className="p-6 max-w-lg mx-auto lg:max-w-none pb-8">
         <header className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/')} className="p-2 -ml-2 text-stone-400 hover:text-stone-600 dark:text-stone-400">
+            <button 
+              onClick={() => navigate('/')} 
+              className="p-2.5 rounded-xl transition-all hover:brightness-95"
+              style={{ background: 'var(--color-bg-subtle)', color: 'var(--color-text-secondary)' }}
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50">Report</h1>
+            <h1 className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+              Report
+            </h1>
           </div>
           <button
             onClick={generatePDF}
             disabled={generating}
-            className="flex items-center gap-2 px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-lg text-sm font-medium disabled:opacity-40"
+            className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -510,34 +207,34 @@ export default function ReportScreen() {
           </button>
         </header>
 
-        <div className="space-y-4">
+        <div className="space-y-5 mb-6">
           <div>
-            <label className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1 block">Customer</label>
+            <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>Customer</label>
             <select
               id="report-customer"
               name="report-customer"
               value={selectedCustomerId}
               onChange={e => setSelectedCustomerId(e.target.value)}
-              className="w-full p-3 border border-stone-200 dark:border-stone-800 rounded-lg bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-50"
+              className="input-field w-full px-4 py-3.5 rounded-xl"
             >
               <option value="all">All Customers</option>
-              {customers.map(c => (
+              {customers.map((c: any) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1 block">Date Range</label>
+            <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>Date Range</label>
             <div className="flex gap-2">
               {(['all', 'today', 'week', 'month'] as DateRange[]).map(range => (
                 <button
                   key={range}
                   onClick={() => setDateRange(range)}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${
+                  className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all ${
                     dateRange === range 
-                      ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900' 
-                      : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400'
+                      ? 'btn-primary' 
+                      : 'input-field'
                   }`}
                 >
                   {range === 'all' ? 'All' : range.charAt(0).toUpperCase() + range.slice(1)}
@@ -547,44 +244,72 @@ export default function ReportScreen() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
-            <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1">Cash In</p>
-            <p className="text-xl font-semibold text-stone-900 dark:text-stone-50">{formatCurrency(reportData.totalCashIn)}</p>
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="card-elevated rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(5,150,105,0.1)' }}>
+                <svg className="w-4 h-4" style={{ color: 'var(--color-success)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Cash In</p>
+            </div>
+            <p className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>{formatCurrency(reportData.totalCashIn)}</p>
           </div>
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
-            <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1">Cash Out</p>
-            <p className="text-xl font-semibold text-stone-900 dark:text-stone-50">{formatCurrency(reportData.totalCashOut)}</p>
+          <div className="card-elevated rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.1)' }}>
+                <svg className="w-4 h-4" style={{ color: 'var(--color-error)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                </svg>
+              </div>
+              <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Cash Out</p>
+            </div>
+            <p className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>{formatCurrency(reportData.totalCashOut)}</p>
           </div>
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
-            <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1">Purchases</p>
-            <p className="text-xl font-semibold text-stone-900 dark:text-stone-50">{formatCurrency(reportData.totalPurchases)}</p>
+          <div className="card-elevated rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(6,78,59,0.1)' }}>
+                <svg className="w-4 h-4" style={{ color: 'var(--color-primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Purchases</p>
+            </div>
+            <p className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>{formatCurrency(reportData.totalPurchases)}</p>
           </div>
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
-            <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1">Products Sold</p>
-            <p className="text-xl font-semibold text-stone-900 dark:text-stone-50">{formatCurrency(totalProductsSold)}</p>
+          <div className="card-elevated rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(217,119,6,0.1)' }}>
+                <svg className="w-4 h-4" style={{ color: 'var(--color-accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Products</p>
+            </div>
+            <p className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>{formatCurrency(totalProductsSold)}</p>
           </div>
         </div>
 
         {productsByCustomer.length > 0 && (
-          <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 overflow-hidden mt-4">
-            <div className="p-4 border-b border-stone-200 dark:border-stone-800">
-              <h2 className="font-semibold text-stone-900 dark:text-stone-50">Products by Customer</h2>
-              <p className="text-xs text-stone-500 dark:text-stone-400">{productsByCustomer.length} customers with purchases</p>
+          <div className="card-elevated rounded-2xl overflow-hidden mb-6">
+            <div className="p-5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+              <h2 className="font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Products by Customer</h2>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{productsByCustomer.length} customers with purchases</p>
             </div>
             
-            <div className="divide-y divide-stone-100 dark:divide-stone-800 max-h-80 overflow-y-auto">
-              {productsByCustomer.map((customerData) => (
-                <div key={customerData.customer.id} className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-stone-900 dark:text-stone-50">{customerData.customer.name}</p>
-                    <p className="font-semibold text-stone-900 dark:text-stone-50">{formatCurrency(customerData.total)}</p>
+            <div className="divide-y" style={{ borderColor: 'var(--color-border-subtle)', maxHeight: '320px', overflowY: 'auto' }}>
+              {productsByCustomer.map((customerData: any) => (
+                <div key={customerData.customer.id} className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="font-medium" style={{ color: 'var(--color-text)' }}>{customerData.customer.name}</p>
+                    <p className="font-semibold" style={{ color: 'var(--color-primary)' }}>{formatCurrency(customerData.total)}</p>
                   </div>
-                  <div className="pl-4 space-y-1">
-                    {customerData.products.map((product, idx) => (
+                  <div className="pl-4 space-y-2">
+                    {customerData.products.map((product: any, idx: number) => (
                       <div key={idx} className="flex justify-between text-sm">
-                        <span className="text-stone-500 dark:text-stone-400">{product.productName} x{product.quantity}</span>
-                        <span className="text-stone-600 dark:text-stone-400">{formatCurrency(product.total)}</span>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>{product.productName} x{product.quantity}</span>
+                        <span style={{ color: 'var(--color-text-muted)' }}>{formatCurrency(product.total)}</span>
                       </div>
                     ))}
                   </div>
@@ -594,69 +319,97 @@ export default function ReportScreen() {
           </div>
         )}
 
-        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 overflow-hidden mt-4">
-          <div className="p-4 border-b border-stone-200 dark:border-stone-800">
-            <h2 className="font-semibold text-stone-900 dark:text-stone-50">Cash Transactions</h2>
-            <p className="text-xs text-stone-500 dark:text-stone-400">{filteredCashTransactions.length} transactions</p>
+        <div className="card-elevated rounded-2xl overflow-hidden mb-6">
+          <div className="p-5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+            <h2 className="font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Cash Transactions</h2>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{filteredCashTransactions.length} transactions</p>
           </div>
           
           {filteredCashTransactions.length > 0 ? (
-            <div className="divide-y divide-stone-100 dark:divide-stone-800 max-h-64 overflow-y-auto">
-              {filteredCashTransactions.map(tx => (
-                <div key={tx.id} className="p-4 flex items-center justify-between">
+            <div className="divide-y" style={{ borderColor: 'var(--color-border-subtle)', maxHeight: '256px', overflowY: 'auto' }}>
+              {filteredCashTransactions.map((tx: any, index: number) => (
+                <div 
+                  key={tx.id} 
+                  className="p-4 flex items-center justify-between transition-all hover:brightness-95"
+                  style={{ animation: 'fadeIn 0.3s ease forwards', animationDelay: `${index * 50}ms`, opacity: 0 }}
+                >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-stone-600 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      tx.type === 'cash_in' ? 'gradient-primary' : ''
+                    }`} style={tx.type !== 'cash_in' ? { background: 'rgba(220,38,38,0.1)' } : {}}>
+                      <svg 
+                        className="w-5 h-5" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        style={{ color: tx.type === 'cash_in' ? 'white' : 'var(--color-error)' }}
+                      >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tx.type === 'cash_in' ? "M12 4v16m8-8H4" : "M20 12H4"} />
                       </svg>
                     </div>
                     <div>
-                      <p className="font-medium text-sm text-stone-900 dark:text-stone-50">{tx.customerName}</p>
-                      <p className="text-xs text-stone-400">{formatDate(tx.timestamp)}</p>
+                      <p className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>{tx.customerName}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{formatDate(tx.timestamp)}</p>
                     </div>
                   </div>
-                  <p className="font-semibold text-stone-900 dark:text-stone-50">
+                  <p className="font-semibold" style={{ color: tx.type === 'cash_in' ? 'var(--color-success)' : 'var(--color-error)' }}>
                     {tx.type === 'cash_in' ? '+' : '-'}{formatCurrency(tx.amount)}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center text-stone-400 text-sm">
+            <div className="p-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
               No cash transactions
             </div>
           )}
         </div>
 
-        <div className="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 overflow-hidden mt-4">
-          <div className="p-4 border-b border-stone-200 dark:border-stone-800">
-            <h2 className="font-semibold text-stone-900 dark:text-stone-50">Sales & Payments</h2>
-            <p className="text-xs text-stone-500 dark:text-stone-400">{filteredTransactions.length} transactions</p>
+        <div className="card-elevated rounded-2xl overflow-hidden">
+          <div className="p-5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+            <h2 className="font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Sales & Payments</h2>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{filteredTransactions.length} transactions</p>
           </div>
           
           {filteredTransactions.length > 0 ? (
-            <div className="divide-y divide-stone-100 dark:divide-stone-800 max-h-64 overflow-y-auto">
-              {filteredTransactions.map(tx => (
-                <div key={tx.id} className="p-4 flex items-center justify-between">
+            <div className="divide-y" style={{ borderColor: 'var(--color-border-subtle)', maxHeight: '256px', overflowY: 'auto' }}>
+              {filteredTransactions.map((tx: any, index: number) => (
+                <div 
+                  key={tx.id} 
+                  className="p-4 flex items-center justify-between transition-all hover:brightness-95"
+                  style={{ animation: 'fadeIn 0.3s ease forwards', animationDelay: `${index * 50}ms`, opacity: 0 }}
+                >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-stone-600 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tx.type === 'purchase' ? "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" : "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"} />
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      tx.type === 'purchase' ? 'gradient-primary' : ''
+                    }`} style={tx.type !== 'purchase' ? { background: 'rgba(5,150,105,0.1)' } : {}}>
+                      <svg 
+                        className="w-5 h-5" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        style={{ color: tx.type === 'purchase' ? 'white' : 'var(--color-success)' }}
+                      >
+                        {tx.type === 'purchase' ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        )}
                       </svg>
                     </div>
                     <div>
-                      <p className="font-medium text-sm text-stone-900 dark:text-stone-50">{tx.customerName}</p>
-                      <p className="text-xs text-stone-400">{formatDate(tx.timestamp)}</p>
+                      <p className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>{tx.customerName}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{formatDate(tx.timestamp)}</p>
                     </div>
                   </div>
-                  <p className="font-semibold text-stone-900 dark:text-stone-50">
+                  <p className="font-semibold" style={{ color: tx.type === 'purchase' ? 'var(--color-text)' : 'var(--color-success)' }}>
                     {tx.type === 'purchase' ? '-' : '+'}{formatCurrency(tx.amount)}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center text-stone-400 text-sm">
+            <div className="p-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
               No transactions
             </div>
           )}

@@ -15,7 +15,7 @@ export default function AdminSignupScreen() {
   const { signUp, language } = useAuth()
   const navigate = useNavigate()
 
-  const ADMIN_ACCESS_CODE = 'SHOPKEEP_ADMIN_2025'
+  const ADMIN_ACCESS_CODE = import.meta.env.VITE_ADMIN_ACCESS_CODE || 'SHOPKEEP_ADMIN_2025'
 
   const t = {
     en: {
@@ -33,7 +33,8 @@ export default function AdminSignupScreen() {
       genericError: 'An error occurred. Please try again.',
       creatingAccount: 'Creating Account...',
       waitSeconds: 'Wait',
-      note: 'Note: This page is for administrators only. Regular users should contact their admin to create accounts.'
+      note: 'Note: This page is for administrators only. Regular users should contact their admin to create accounts.',
+      createShop: 'Create New Shop'
     },
     so: {
       title: 'Maamul: Ka Abuuro Accountka Dukaanka Cusub',
@@ -50,7 +51,8 @@ export default function AdminSignupScreen() {
       genericError: 'Waxaa dhacay khalad. Fadlan isku day markale.',
       creatingAccount: 'Waa la abuurayaa...',
       waitSeconds: 'Sug',
-      note: 'Xusid: Boggan waa maamulaha keliya. Userska caadiga ah waa in la wada xidhiidhho maamulaha si ay u abuuraan accounts.'
+      note: 'Xusid: Boggan waa maamulaha keliya. Userska caadiga ah waa in la wada xidhiidhho maamulaha si ay u abuuraan accounts.',
+      createShop: 'Abuuro Dukaanka Cusub'
     }
   }
 
@@ -115,113 +117,142 @@ export default function AdminSignupScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center px-4">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <img 
-            src="./app_icon.png" 
-            alt="App Icon" 
-            className="w-16 h-16 rounded-xl mx-auto object-cover"
-          />
-          <h1 className="text-center text-2xl font-semibold text-stone-900 dark:text-stone-50 mt-4">AmaahPay</h1>
-          <div className="bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-4 py-2 rounded-lg text-sm font-medium text-center mt-4">
+    <div className="min-h-screen gradient-mesh flex items-center justify-center p-6">
+      <div className="w-full max-w-sm">
+        {/* Header */}
+        <div className="text-center mb-8 animate-fade-in-up">
+          <div 
+            className="w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-xl animate-pulse-glow"
+            style={{ boxShadow: '0 0 40px rgba(6,78,59,0.3)' }}
+          >
+            <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+            AmaahPay
+          </h1>
+          <div 
+            className="inline-block mt-3 px-4 py-2 rounded-xl text-sm font-medium"
+            style={{ background: 'rgba(220,38,38,0.1)', color: 'var(--color-error)' }}
+          >
             {labels.adminOnly}
           </div>
-          <h2 className="text-center text-xl font-semibold text-stone-900 dark:text-stone-50 mt-4">
-            {labels.title}
-          </h2>
         </div>
 
-        {error && (
-          <div className="bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        )}
+        {/* Form Card */}
+        <div className="card-elevated rounded-3xl p-6 animate-fade-in-up delay-200">
+          <h2 className="text-xl font-semibold text-center mb-6" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+            {labels.title}
+          </h2>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="shop-name" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              {labels.shopName}
-            </label>
-            <input
-              id="shop-name"
-              name="shopName"
-              type="text"
-              required
-              value={shopName}
-              onChange={(e) => setShopName(e.target.value)}
-              className="w-full px-3 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg text-stone-900 dark:text-stone-50 focus:outline-none focus:border-stone-400"
-              placeholder={labels.shopName}
-            />
-          </div>
+          {error && (
+            <div className="mb-6 p-4 rounded-xl flex items-center gap-3" style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)' }}>
+              <svg className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-error)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm" style={{ color: 'var(--color-error)' }}>{error}</p>
+            </div>
+          )}
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              {labels.email}
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg text-stone-900 dark:text-stone-50 focus:outline-none focus:border-stone-400"
-              placeholder={labels.email}
-            />
-          </div>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
+                {labels.shopName}
+              </label>
+              <input
+                type="text"
+                required
+                value={shopName}
+                onChange={(e) => setShopName(e.target.value)}
+                className="input-field w-full px-4 py-3.5 rounded-xl"
+                placeholder={labels.shopName}
+              />
+            </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              {labels.password}
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg text-stone-900 dark:text-stone-50 focus:outline-none focus:border-stone-400"
-              placeholder={labels.password}
-              minLength={6}
-            />
-          </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
+                {labels.email}
+              </label>
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-field w-full px-4 py-3.5 rounded-xl"
+                placeholder={labels.email}
+              />
+            </div>
 
-          <div>
-            <label htmlFor="admin-code" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              {labels.adminCode}
-            </label>
-            <input
-              id="admin-code"
-              name="adminCode"
-              type="password"
-              required
-              value={adminCode}
-              onChange={(e) => setAdminCode(e.target.value)}
-              className="w-full px-3 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg text-stone-900 dark:text-stone-50 focus:outline-none focus:border-stone-400"
-              placeholder={labels.enterAdminCode}
-            />
-          </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
+                {labels.password}
+              </label>
+              <input
+                type="password"
+                autoComplete="new-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-field w-full px-4 py-3.5 rounded-xl"
+                placeholder={labels.password}
+                minLength={6}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading || !canSubmit}
-            className="w-full py-3 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-medium rounded-lg disabled:opacity-40"
-          >
-            {loading ? labels.creatingAccount : !canSubmit ? `${labels.waitSeconds} ${cooldownRemaining}s` : labels.createAccount}
-          </button>
+            <div>
+              <label className="text-sm font-medium mb-2 block flex items-center gap-2" style={{ color: 'var(--color-error)' }}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                {labels.adminCode}
+              </label>
+              <input
+                type="password"
+                required
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value)}
+                className="input-field w-full px-4 py-3.5 rounded-xl"
+                placeholder={labels.enterAdminCode}
+              />
+            </div>
 
-          <div className="text-center">
-            <Link to="/login" className="font-medium text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:text-stone-50">
+            <button
+              type="submit"
+              disabled={loading || !canSubmit}
+              className="btn-primary w-full py-4 rounded-xl font-medium text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? labels.creatingAccount : !canSubmit ? `${labels.waitSeconds} ${cooldownRemaining}s` : labels.createShop}
+            </button>
+          </form>
+
+          <div className="mt-6 flex gap-3">
+            <Link 
+              to="/login" 
+              className="flex-1 text-center py-3 rounded-xl font-medium text-sm transition-all hover:brightness-95"
+              style={{ 
+                background: 'var(--color-bg-subtle)', 
+                color: 'var(--color-text-secondary)',
+                border: '1px solid var(--color-border)'
+              }}
+            >
               {labels.backToLogin}
             </Link>
+            <Link 
+              to="/login" 
+              className="flex-1 text-center py-3 rounded-xl font-medium text-sm btn-primary"
+            >
+              Login
+            </Link>
           </div>
-        </form>
+        </div>
 
-        <div className="bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 px-4 py-3 rounded-lg text-xs">
+        {/* Info Box */}
+        <div 
+          className="mt-6 p-4 rounded-xl text-sm text-center"
+          style={{ background: 'rgba(6,78,59,0.05)', color: 'var(--color-text-secondary)' }}
+        >
           {labels.note}
         </div>
       </div>

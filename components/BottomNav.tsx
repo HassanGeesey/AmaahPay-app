@@ -10,12 +10,36 @@ export default function BottomNav() {
     { label: t.items, path: '/products', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /> },
     { label: 'Report', path: '/report', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /> },
   ];
+  
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 px-4 py-2 flex justify-around items-center z-50">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 z-50 px-4 py-2 flex justify-around items-center"
+      style={{ 
+        background: 'var(--color-surface)',
+        borderTop: '1px solid var(--color-border)',
+        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))'
+      }}
+    >
       {navItems.map(({ path, label, icon }) => (
-        <NavLink key={path} to={path} className={({ isActive }) => `flex flex-col items-center p-2 rounded-lg ${isActive ? 'text-stone-900 dark:text-stone-50' : 'text-stone-400 dark:text-stone-500'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">{icon}</svg>
-          <span className="text-[10px] mt-1 font-medium">{label}</span>
+        <NavLink 
+          key={path} 
+          to={path}
+        >
+          {({ isActive }) => (
+            <div className="flex flex-col items-center p-2 rounded-xl transition-all">
+              <div 
+                className={`w-11 h-11 rounded-xl flex items-center justify-center mb-1 transition-all ${
+                  isActive ? 'gradient-primary text-white' : ''
+                }`}
+                style={isActive ? {} : { background: 'var(--color-bg-subtle)', opacity: 0.7 }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">{icon}</svg>
+              </div>
+              <span className="text-[10px] font-medium" style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                {label}
+              </span>
+            </div>
+          )}
         </NavLink>
       ))}
     </nav>
