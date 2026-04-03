@@ -72,33 +72,37 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Supabase error fetching users:', error)
-        throw error
+        console.warn('Profiles table error (will try subscriptions):', error.message)
       }
       
       console.log('Users fetched from profiles:', data)
       
-      // If profiles table is empty, try to get users from auth.users
+      // If profiles table is empty or error, try to get users from subscriptions
       if (!data || data.length === 0) {
-        console.log('Profiles table is empty, fetching from auth.users...')
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
+        console.log('Profiles table empty, fetching from subscriptions...')
+        const { data: subsData, error: subsError } = await supabase
+          .from('subscriptions')
+          .select('user_id, email, plan, status, expiry_date, created_at')
+          .order('created_at', { ascending: false })
         
-        if (authError) {
-          console.error('Error fetching auth users:', authError)
-        } else {
-          console.log('Auth users:', authUsers.users)
-          // Map auth users to profile format
-          const mappedUsers: UserProfile[] = authUsers.users.map(user => ({
-            id: user.id,
-            email: user.email || '',
-            role: (user.user_metadata?.role as string) || 'shop_owner',
-            shop_name: (user.user_metadata?.shop_name as string) || '',
-            subscription_status: 'active',
-            subscription_end: null,
-            is_active: true,
-            last_login: user.last_sign_in_at || '',
-            created_at: user.created_at
+        if (subsError) {
+          console.warn('Subscriptions fetch error:', subsError.message)
+        }
+        
+        if (subsData && subsData.length > 0) {
+          // Map subscriptions to user format
+          const mappedUsers: UserProfile[] = subsData.map(sub => ({
+            id: sub.user_id,
+            email: sub.email || '',
+            role: sub.plan || 'shop_owner',
+            shop_name: sub.email?.split('@')[0] || '',
+            subscription_status: sub.status || 'active',
+            subscription_end: sub.expiry_date,
+            is_active: sub.status === 'paid',
+            last_login: '',
+            created_at: sub.created_at
           }))
+          console.log('Users from subscriptions:', mappedUsers)
           setUsers(mappedUsers)
           setLoading(false)
           return
