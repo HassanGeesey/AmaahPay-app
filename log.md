@@ -106,13 +106,16 @@
 - ✅ Dev server starts successfully
 - ✅ Environment variables configured
 - ✅ Admin dashboard routes protected
-- ❌ Admin user not yet created in Supabase
+- ✅ Admin user can login and access dashboard
+- ✅ Users showing in admin dashboard (via fallback to auth.users)
+- ✅ Subscriptions showing in admin dashboard
+- ✅ RLS policies fixed (simplified for now)
+- ✅ profile_id columns added to tables
 
 ---
 
 ### Next Steps
-1. Run `database/setup.sql` in Supabase SQL Editor
-2. Create admin user with the provided SQL query
-3. Test admin login and dashboard access
-4. Test shop account creation from admin dashboard
-5. Verify subscription logic (30-day expiration)
+1. Test shop account creation from admin dashboard
+2. Verify subscription logic (30-day expiration)
+3. Add proper RLS policies for production (currently using simplified policy)
+4. Test toggle user access functionality

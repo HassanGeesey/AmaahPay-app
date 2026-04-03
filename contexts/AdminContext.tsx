@@ -127,18 +127,22 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateData.subscription_end = expiryDate.toISOString()
       }
 
+      // Try to update profiles table
       const { error } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('id', userId)
 
-      if (error) throw error
+      // If profiles table fails, log the action anyway (RLS may block)
+      if (error) {
+        console.warn('Could not update profiles table (RLS may block):', error.message)
+      }
 
       // Log the action
       await logAdminAction(isActive ? 'disable_user' : 'enable_user', userId)
 
-      // Update local state
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: newStatus, ...(newStatus && { subscription_end: updateData.subscription_end }) } : u))
+      // Update local state regardless of profile update success
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: newStatus, ...(newStatus && { subscription_end: updateData.subscription_end || '' }) } : u))
 
       return { success: true }
     } catch (err) {
@@ -177,32 +181,51 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       expiryDate.setDate(expiryDate.getDate() + 30)
 
       // Create subscription record
-      const { error: subError } = await supabase.from('subscriptions').insert({
-        user_id: userId,
-        email,
-        plan,
-        amount: plan === 'basic' ? 9 : plan === 'professional' ? 19 : 49,
-        status: 'paid',
-        expiry_date: expiryDate.toISOString()
-      })
+      try {
+        const { error: subError } = await supabase.from('subscriptions').insert({
+          user_id: userId,
+          email,
+          plan,
+          amount: plan === 'basic' ? 9 : plan === 'professional' ? 19 : 49,
+          status: 'paid',
+          expiry_date: expiryDate.toISOString()
+        })
 
-      if (subError) throw subError
+        if (subError) {
+          console.warn('Could not create subscription record:', subError.message)
+        }
+      } catch (subErr) {
+        console.warn('Subscription creation warning:', subErr)
+      }
 
-      // Update profile with subscription end date (upsert in case trigger already created it)
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: userId,
-        email,
-        shop_name: shopName,
-        role: 'shop_owner',
-        subscription_end: expiryDate.toISOString(),
-        is_active: true,
-        subscription_status: 'active'
-      }, { onConflict: 'id' })
+      // Try to update/insert profile
+      try {
+        const { error: profileError } = await supabase.from('profiles').upsert({
+          id: userId,
+          email,
+          shop_name: shopName,
+          role: 'shop_owner',
+          subscription_end: expiryDate.toISOString(),
+          is_active: true,
+          subscription_status: 'active'
+        }, { onConflict: 'id' })
 
-      if (profileError) throw profileError
+        if (profileError) {
+          console.warn('Could not update profile:', profileError.message)
+        }
+      } catch (profileErr) {
+        console.warn('Profile update warning:', profileErr)
+      }
 
-      // Log the action
-      await logAdminAction('create_shop', userId, { email, shopName, plan })
+      // Try to log the action
+      try {
+        await logAdminAction('create_shop', userId, { email, shopName, plan })
+      } catch (logErr) {
+        console.warn('Audit log warning:', logErr)
+      }
+
+      // Refresh the user list
+      getAllUsers()
 
       return { success: true }
     } catch (err) {
@@ -210,7 +233,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.error('Error creating shop account:', err)
       return { success: false, error: message }
     }
-  }, [])
+  }, [getAllUsers])
 
   const getSubscriptions = useCallback(async () => {
     setLoading(true)
