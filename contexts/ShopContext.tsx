@@ -147,8 +147,6 @@ try {
         isOnline: navigator.onLine,
         formatCurrency: DEFAULT_STATE.formatCurrency
       });
-
-      console.log('State set - customers:', customers.length, 'transactions:', transactions.length, 'cashTransactions:', cashTransactions.length);
     } catch (error) {
       console.error('Error loading data:', error);
       console.error('Error details:', (error as Error).message || 'Unknown error');

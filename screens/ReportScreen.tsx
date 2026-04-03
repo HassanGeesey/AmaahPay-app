@@ -24,17 +24,6 @@ export default function ReportScreen() {
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('all')
   const [dateRange, setDateRange] = useState<DateRange>('all')
-  const [generating, setGenerating] = useState(false)
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
-      </div>
-    )
-  }
-
-  console.log('ReportScreen - transactions:', transactions?.length, 'cashTransactions:', cashTransactions?.length, 'customers:', customers?.length)
 
   const filteredTransactions = useMemo(() => {
     if (!transactions) return []
@@ -179,12 +168,12 @@ export default function ReportScreen() {
     })
   }
 
-  const generatePDF = async () => {
-    setGenerating(true)
-    setTimeout(() => {
-      setGenerating(false)
-      alert('PDF export temporarily disabled for deployment')
-    }, 1000)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
+      </div>
+    )
   }
 
   return (
@@ -205,16 +194,6 @@ export default function ReportScreen() {
               Report
             </h1>
           </div>
-          <button
-            onClick={generatePDF}
-            disabled={generating}
-            className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            {generating ? '...' : 'PDF'}
-          </button>
         </header>
 
         <div className="space-y-5 mb-6">
