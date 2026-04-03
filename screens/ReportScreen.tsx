@@ -34,6 +34,8 @@ export default function ReportScreen() {
     )
   }
 
+  console.log('ReportScreen - transactions:', transactions?.length, 'cashTransactions:', cashTransactions?.length, 'customers:', customers?.length)
+
   const filteredTransactions = useMemo(() => {
     if (!transactions) return []
     

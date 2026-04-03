@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.products (
 -- Transactions table
 CREATE TABLE IF NOT EXISTS public.transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  profile_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   customer_id UUID REFERENCES public.customers(id) ON DELETE SET NULL,
   customer_name TEXT NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('purchase', 'payment')),
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 -- Cash transactions table
 CREATE TABLE IF NOT EXISTS public.cash_transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  profile_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   customer_id UUID REFERENCES public.customers(id) ON DELETE SET NULL,
   customer_name TEXT NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('cash_in', 'cash_out')),
@@ -216,23 +218,23 @@ DROP POLICY IF EXISTS "Authenticated users can insert transactions" ON public.tr
 DROP POLICY IF EXISTS "Authenticated users can update transactions" ON public.transactions;
 
 CREATE POLICY "Authenticated users can view transactions" ON public.transactions
-  FOR SELECT USING (auth.role() = 'authenticated');
+  FOR SELECT USING (auth.uid() = profile_id);
 
 CREATE POLICY "Authenticated users can insert transactions" ON public.transactions
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+  FOR INSERT WITH CHECK (auth.uid() = profile_id);
 
 CREATE POLICY "Authenticated users can update transactions" ON public.transactions
-  FOR UPDATE USING (auth.role() = 'authenticated');
+  FOR UPDATE USING (auth.uid() = profile_id);
 
 -- Cash transactions policies
 DROP POLICY IF EXISTS "Authenticated users can view cash transactions" ON public.cash_transactions;
 DROP POLICY IF EXISTS "Authenticated users can insert cash transactions" ON public.cash_transactions;
 
 CREATE POLICY "Authenticated users can view cash transactions" ON public.cash_transactions
-  FOR SELECT USING (auth.role() = 'authenticated');
+  FOR SELECT USING (auth.uid() = profile_id);
 
 CREATE POLICY "Authenticated users can insert cash transactions" ON public.cash_transactions
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+  FOR INSERT WITH CHECK (auth.uid() = profile_id);
 
 -- Subscriptions policies
 DROP POLICY IF EXISTS "Users can view own subscription" ON public.subscriptions;
@@ -253,8 +255,10 @@ CREATE POLICY "Authenticated users can view settings" ON public.settings
 -- INDEXES FOR PERFORMANCE
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON public.customers(phone);
+CREATE INDEX IF NOT EXISTS idx_transactions_profile_id ON public.transactions(profile_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_customer_id ON public.transactions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON public.transactions(created_at);
+CREATE INDEX IF NOT EXISTS idx_cash_transactions_profile_id ON public.cash_transactions(profile_id);
 CREATE INDEX IF NOT EXISTS idx_cash_transactions_customer_id ON public.cash_transactions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON public.subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON public.subscriptions(status);
