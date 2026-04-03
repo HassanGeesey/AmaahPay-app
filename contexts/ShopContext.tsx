@@ -101,15 +101,20 @@ const loadUserData = async () => {
     try {
       // Fetch shop name from profile
       if (navigator.onLine) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('shop_name')
-          .eq('id', user.id)
-          .single();
-        
-        if (profile) {
-          shopName = profile.shop_name || '';
-          localStorage.setItem('shop_name', shopName);
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('shop_name')
+            .eq('id', user.id)
+            .single();
+          
+          if (profile && !profileError) {
+            shopName = profile.shop_name || '';
+            localStorage.setItem('shop_name', shopName);
+          }
+        } catch (profileErr) {
+          console.error('Error fetching shop name:', profileErr);
+          shopName = localStorage.getItem('shop_name') || '';
         }
       } else {
         shopName = localStorage.getItem('shop_name') || '';
