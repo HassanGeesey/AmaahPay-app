@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState, Customer, Product, Transaction, TransactionItem, Language } from '../types';
+import { AppState, Customer, Product, Transaction, TransactionItem, Language, Theme } from '../types';
 import { supabaseService } from '../services/SupabaseService';
 import { useAuth } from './AuthContext';
 import { translations } from './Translations';
@@ -25,7 +25,7 @@ const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 const DEFAULT_STATE: AppState = {
   customers: [], products: [], transactions: [], cashTransactions: [],
-  settings: { currency: 'SOS', currencySymbol: 'SOS', language: 'en' as Language },
+  settings: { currency: 'SOS', currencySymbol: 'SOS', language: 'en' as Language, theme: 'light' as Theme },
   shopName: '',
   formatCurrency: (amount: number) => `${amount.toLocaleString()} SOS`,
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -63,7 +63,9 @@ const loadUserData = async () => {
             transactions: [],
             cashTransactions: [],
             settings: { ...DEFAULT_STATE.settings, language },
-            shopName: ''
+            shopName: '',
+            isOnline: navigator.onLine,
+            formatCurrency: DEFAULT_STATE.formatCurrency
           });
           setLoading(false);
         }
@@ -142,11 +144,12 @@ try {
         cashTransactions,
         settings: { ...DEFAULT_STATE.settings, language },
         shopName,
-        isOnline: navigator.onLine
+        isOnline: navigator.onLine,
+        formatCurrency: DEFAULT_STATE.formatCurrency
       });
     } catch (error) {
       console.error('Error loading data:', error);
-      console.error('Error details:', error.message || 'Unknown error');
+      console.error('Error details:', (error as Error).message || 'Unknown error');
       setState({
         customers: [],
         products: [],
@@ -154,7 +157,8 @@ try {
         cashTransactions: [],
         settings: { ...DEFAULT_STATE.settings, language },
         shopName,
-        isOnline: navigator.onLine
+        isOnline: navigator.onLine,
+        formatCurrency: DEFAULT_STATE.formatCurrency
       });
     }
   };
