@@ -160,7 +160,7 @@ ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 -- ROW LEVEL SECURITY POLICIES
 -- ============================================
 
--- Profiles policies
+-- Profiles policies (all authenticated users can view their own, admins can view all)
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
@@ -173,6 +173,17 @@ CREATE POLICY "Users can update their own profile" ON public.profiles
 
 CREATE POLICY "Users can insert their own profile" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Admins can view all profiles
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+CREATE POLICY "Admins can view all profiles" ON public.profiles
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM auth.users u 
+      WHERE u.id = auth.uid() 
+      AND (u.raw_user_meta_data->>'role') = 'admin'
+    )
+  );
 
 -- Customers policies (all authenticated users can access)
 DROP POLICY IF EXISTS "Authenticated users can view customers" ON public.customers;
@@ -347,7 +358,37 @@ $$ LANGUAGE plpgsql;
 -- ============================================
 DROP POLICY IF EXISTS "Admins can manage all users" ON public.profiles;
 CREATE POLICY "Admins can manage all users" ON public.profiles
-  FOR ALL USING (auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin'));
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM auth.users u 
+      WHERE u.id = auth.uid() 
+      AND (u.raw_user_meta_data->>'role') = 'admin'
+    )
+  );
+
+-- ============================================
+-- AUTO-CREATE PROFILE TRIGGER
+-- ============================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, role, shop_name, is_active, subscription_status)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'role', 'shop_owner'),
+    COALESCE(NEW.raw_user_meta_data->>'shop_name', ''),
+    true,
+    'active'
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Payment history RLS
 CREATE POLICY "Admins can view all payments" ON public.payment_history

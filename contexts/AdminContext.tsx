@@ -154,14 +154,16 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (subError) throw subError
 
-      // Update profile with subscription end date
-      const { error: profileError } = await supabase.from('profiles').insert({
+      // Update profile with subscription end date (upsert in case trigger already created it)
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: userId,
         email,
         shop_name: shopName,
+        role: 'shop_owner',
         subscription_end: expiryDate.toISOString(),
-        is_active: true
-      })
+        is_active: true,
+        subscription_status: 'active'
+      }, { onConflict: 'id' })
 
       if (profileError) throw profileError
 
