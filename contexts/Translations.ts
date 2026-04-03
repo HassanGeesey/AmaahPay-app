@@ -2,7 +2,7 @@
 export const translations = {
   en: {
     home: "Home", people: "People", items: "Items", stats: "Numbers",
-    newBuy: "New Sale", newPay: "New Payment", store: "My Shop", recent: "Recent",
+    newBuy: "New Sale", newPay: "New Payment", store: "Dashboard", recent: "Recent",
     totalDeposit: "Deposit Lacag", totalCredit: "Credit Lacag", net: "Net Lacag",
     addPerson: "Add Person", search: "Search...", name: "Name", phone: "Phone",
     money: "Money", save: "Save", cancel: "Cancel", history: "History", profile: "Profile",
@@ -22,7 +22,7 @@ addProduct: "Add Product",
   },
   so: {
     home: "Hoy", people: "Dadka", items: "Alaabta", stats: "Tirooyinka",
-    newBuy: "Gadasho Cusub", newPay: "Bixin Cusub", store: "Bakhaarkayga", recent: "Dhawaan",
+    newBuy: "Gadasho Cusub", newPay: "Bixin Cusub", store: "Dashboardka", recent: "Dhawaan",
     totalDeposit: "Lacag Dhigaal", totalCredit: "Lacag Amaah", net: "Lacagta Harta",
     addPerson: "Ku dar Qof", search: "Raadi...", name: "Magac", phone: "Taleefon",
     money: "Lacag", save: "Keydi", cancel: "Jooji", history: "Taariikhda", profile: "Macmiilka",
