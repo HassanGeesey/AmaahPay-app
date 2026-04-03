@@ -1,6 +1,15 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useShop } from '../contexts/ShopContext'
+import { jsPDF } from 'jspdf'
+
+declare global {
+  interface Window {
+    Android?: {
+      downloadPDF: (base64Data: string, fileName: string) => void
+    }
+  }
+}
 
 type DateRange = 'today' | 'week' | 'month' | 'all'
 
@@ -24,6 +33,7 @@ export default function ReportScreen() {
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('all')
   const [dateRange, setDateRange] = useState<DateRange>('all')
+  const [generating, setGenerating] = useState(false)
 
   const filteredTransactions = useMemo(() => {
     if (!transactions) return []
@@ -168,6 +178,84 @@ export default function ReportScreen() {
     })
   }
 
+  const generatePDF = useCallback(() => {
+    setGenerating(true)
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    let y = 20
+
+    doc.setFontSize(20)
+    doc.text('Report', pageWidth / 2, y, { align: 'center' })
+    y += 15
+
+    doc.setFontSize(12)
+    doc.text(`Date Range: ${dateRange === 'all' ? 'All' : dateRange.charAt(0).toUpperCase() + dateRange.slice(1)}`, 20, y)
+    y += 10
+
+    doc.setFontSize(14)
+    doc.text('Summary', 20, y)
+    y += 10
+
+    doc.setFontSize(11)
+    doc.text(`Cash In: ${formatCurrency(reportData.totalCashIn)}`, 20, y)
+    y += 7
+    doc.text(`Cash Out: ${formatCurrency(reportData.totalCashOut)}`, 20, y)
+    y += 7
+    doc.text(`Purchases: ${formatCurrency(reportData.totalPurchases)}`, 20, y)
+    y += 7
+    doc.text(`Products: ${formatCurrency(totalProductsSold)}`, 20, y)
+    y += 15
+
+    if (filteredCashTransactions.length > 0) {
+      doc.setFontSize(14)
+      doc.text('Cash Transactions', 20, y)
+      y += 10
+
+      doc.setFontSize(10)
+      filteredCashTransactions.slice(0, 20).forEach((tx: any) => {
+        const date = new Date(tx.timestamp).toLocaleDateString()
+        doc.text(`${date} - ${tx.customerName}: ${tx.type === 'cash_in' ? '+' : '-'}${formatCurrency(tx.amount)}`, 20, y)
+        y += 6
+        if (y > 270) {
+          doc.addPage()
+          y = 20
+        }
+      })
+      y += 10
+    }
+
+    if (filteredTransactions.length > 0) {
+      doc.setFontSize(14)
+      doc.text('Sales & Payments', 20, y)
+      y += 10
+
+      doc.setFontSize(10)
+      filteredTransactions.slice(0, 20).forEach((tx: any) => {
+        const date = new Date(tx.timestamp).toLocaleDateString()
+        doc.text(`${date} - ${tx.customerName}: ${tx.type === 'purchase' ? '-' : '+'}${formatCurrency(tx.amount)}`, 20, y)
+        y += 6
+        if (y > 270) {
+          doc.addPage()
+          y = 20
+        }
+      })
+    }
+
+    const pdfBase64 = doc.output('datauristring')
+    const fileName = `report_${new Date().toISOString().split('T')[0]}.pdf`
+
+    if (window.Android && window.Android.downloadPDF) {
+      window.Android.downloadPDF(pdfBase64, fileName)
+    } else {
+      const link = document.createElement('a')
+      link.href = pdfBase64
+      link.download = fileName
+      link.click()
+    }
+
+    setTimeout(() => setGenerating(false), 1000)
+  }, [reportData, totalProductsSold, filteredCashTransactions, filteredTransactions, dateRange, formatCurrency])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -194,6 +282,16 @@ export default function ReportScreen() {
               Report
             </h1>
           </div>
+          <button
+            onClick={generatePDF}
+            disabled={generating}
+            className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {generating ? '...' : 'PDF'}
+          </button>
         </header>
 
         <div className="space-y-5 mb-6">

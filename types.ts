@@ -50,5 +50,4 @@ export interface AppState {
   settings: { currency: string; currencySymbol: string; language: Language; theme: Theme };
   formatCurrency: (amount: number) => string;
   shopName: string;
-  isOnline: boolean;
 }

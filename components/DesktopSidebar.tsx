@@ -39,7 +39,7 @@ const navItems = [
 export default function DesktopSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { shopName, isOnline } = useShop();
+  const { shopName } = useShop();
   const { isAdmin, signOut } = useAuth();
 
   const handleLogout = async () => {
@@ -61,8 +61,8 @@ export default function DesktopSidebar() {
             <h1 className="font-semibold" style={{ color: 'var(--color-text)' }}>
               {shopName || 'AmaahPay'}
             </h1>
-            <p className="text-xs" style={{ color: isOnline ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-              {isOnline ? '● Online' : '○ Offline'}
+            <p className="text-xs" style={{ color: 'var(--color-success)' }}>
+              ● Online
             </p>
           </div>
         </div>

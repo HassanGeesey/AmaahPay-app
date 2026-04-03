@@ -27,8 +27,7 @@ const DEFAULT_STATE: AppState = {
   customers: [], products: [], transactions: [], cashTransactions: [],
   settings: { currency: 'SOS', currencySymbol: 'SOS', language: 'en' as Language, theme: 'light' as Theme },
   shopName: '',
-  formatCurrency: (amount: number) => `${amount.toLocaleString()} SOS`,
-  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true
+  formatCurrency: (amount: number) => `${amount.toLocaleString()} SOS`
 };
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -64,7 +63,6 @@ const loadUserData = async () => {
             cashTransactions: [],
             settings: { ...DEFAULT_STATE.settings, language },
             shopName: '',
-            isOnline: navigator.onLine,
             formatCurrency: DEFAULT_STATE.formatCurrency
           });
           setLoading(false);
@@ -79,22 +77,6 @@ const loadUserData = async () => {
     loadUserData();
   }, [user]);
 
-  // Track online/offline status
-  useEffect(() => {
-    const handleOnline = () => setState(s => ({ ...s, isOnline: true }));
-    const handleOffline = () => setState(s => ({ ...s, isOnline: false }));
-
-    setState(s => ({ ...s, isOnline: navigator.onLine }));
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
   const loadData = async () => {
     if (!user) return;
 
@@ -102,28 +84,23 @@ const loadUserData = async () => {
 
     try {
       // Fetch shop name from profile
-      if (navigator.onLine) {
-        try {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('shop_name')
-            .eq('id', user.id)
-            .single();
-          
-          if (profile && !profileError) {
-            shopName = profile.shop_name || '';
-            localStorage.setItem('shop_name', shopName);
-          }
-        } catch (profileErr) {
-          console.error('Error fetching shop name:', profileErr);
-          shopName = localStorage.getItem('shop_name') || '';
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('shop_name')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile && !profileError) {
+          shopName = profile.shop_name || '';
         }
-      } else {
-        shopName = localStorage.getItem('shop_name') || '';
+      } catch (profileErr) {
+        console.error('Error fetching shop name:', profileErr);
+        shopName = '';
       }
     } catch (error) {
       console.error('Error fetching shop name:', error);
-      shopName = localStorage.getItem('shop_name') || '';
+      shopName = '';
     }
 
 try {
@@ -144,7 +121,6 @@ try {
         cashTransactions,
         settings: { ...DEFAULT_STATE.settings, language },
         shopName,
-        isOnline: navigator.onLine,
         formatCurrency: DEFAULT_STATE.formatCurrency
       });
     } catch (error) {
@@ -157,7 +133,6 @@ try {
         cashTransactions: [],
         settings: { ...DEFAULT_STATE.settings, language },
         shopName,
-        isOnline: navigator.onLine,
         formatCurrency: DEFAULT_STATE.formatCurrency
       });
     }

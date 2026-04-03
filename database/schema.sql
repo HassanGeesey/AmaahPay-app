@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   amount DOUBLE PRECISION NOT NULL,
   items JSONB,
   notes TEXT,
+  previous_balance JSONB,
   new_balance JSONB NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
