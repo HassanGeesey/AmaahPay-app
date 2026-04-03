@@ -19,12 +19,20 @@ interface ProductSale {
 }
 
 export default function ReportScreen() {
-  const { customers, transactions, cashTransactions, products, settings, formatCurrency, shopName } = useShop()
+  const { customers, transactions, cashTransactions, products, settings, formatCurrency, shopName, loading } = useShop()
   const navigate = useNavigate()
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('all')
   const [dateRange, setDateRange] = useState<DateRange>('all')
   const [generating, setGenerating] = useState(false)
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
+      </div>
+    )
+  }
 
   const filteredTransactions = useMemo(() => {
     if (!transactions) return []
