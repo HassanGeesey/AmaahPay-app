@@ -7,7 +7,7 @@ interface UserProfile {
   role: string
   shop_name: string
   subscription_status: string
-  subscription_end: string
+  subscription_end: string | null
   is_active: boolean
   last_login: string
   created_at: string
@@ -65,12 +65,46 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setError(null)
 
     try {
+      console.log('Fetching users from profiles table...')
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error fetching users:', error)
+        throw error
+      }
+      
+      console.log('Users fetched from profiles:', data)
+      
+      // If profiles table is empty, try to get users from auth.users
+      if (!data || data.length === 0) {
+        console.log('Profiles table is empty, fetching from auth.users...')
+        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
+        
+        if (authError) {
+          console.error('Error fetching auth users:', authError)
+        } else {
+          console.log('Auth users:', authUsers.users)
+          // Map auth users to profile format
+          const mappedUsers: UserProfile[] = authUsers.users.map(user => ({
+            id: user.id,
+            email: user.email || '',
+            role: (user.user_metadata?.role as string) || 'shop_owner',
+            shop_name: (user.user_metadata?.shop_name as string) || '',
+            subscription_status: 'active',
+            subscription_end: null,
+            is_active: true,
+            last_login: user.last_sign_in_at || '',
+            created_at: user.created_at
+          }))
+          setUsers(mappedUsers)
+          setLoading(false)
+          return
+        }
+      }
+      
       setUsers(data || [])
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch users'
