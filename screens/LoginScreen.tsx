@@ -20,11 +20,15 @@ export default function LoginScreen() {
     setError(null)
 
     try {
-      const { error } = await signIn(email, password)
+      const { data, error } = await signIn(email, password)
       if (error) {
         setError('Invalid email or password')
       } else {
-        navigate('/')
+        if (data?.user?.user_metadata?.role === 'admin') {
+          navigate('/admin')
+        } else {
+          navigate('/')
+        }
       }
     } catch (err) {
       setError('An error occurred')
@@ -125,21 +129,7 @@ export default function LoginScreen() {
               </div>
             </div>
 
-            {/* Admin Link */}
-            <Link 
-              to="/admin-signup" 
-              className="flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all hover:brightness-95 mb-4"
-              style={{ 
-                background: 'rgba(220,38,38,0.08)', 
-                color: 'var(--color-error)',
-                border: '1px solid rgba(220,38,38,0.2)'
-              }}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              Admin Panel - Create Shop
-            </Link>
+
 
             {/* Contact Options */}
             <div className="grid grid-cols-2 gap-3">

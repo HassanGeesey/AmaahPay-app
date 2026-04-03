@@ -8,11 +8,12 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   signUp: (email: string, password: string, shopName: string) => Promise<{ error: AuthError | null }>
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
+  signIn: (email: string, password: string) => Promise<{ data?: any, error: AuthError | null }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>
   language: Language
   toggleLanguage: () => void
+  isAdmin: () => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -91,11 +92,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
-      return { error }
+      return { data, error }
     } catch (error) {
       console.error('Signin error:', error)
       return { error: error as AuthError }
@@ -128,6 +129,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('shop_keep_language', newLanguage)
   }
 
+  const isAdmin = () => {
+    // Check if user has admin role based on user_metadata role
+    // This allows database-driven admin management
+    const hasRole = user?.user_metadata?.role === 'admin'
+    
+    // Debug logging
+    console.log('isAdmin check:', {
+      userEmail: user?.email,
+      userRole: user?.user_metadata?.role,
+      result: hasRole
+    })
+    
+    return hasRole
+  }
+
   const t = translations[language]
 
   const value: AuthContextType = {
@@ -139,7 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     resetPassword,
     language,
-    toggleLanguage
+    toggleLanguage,
+    isAdmin
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
